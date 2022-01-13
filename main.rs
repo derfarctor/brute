@@ -46,8 +46,8 @@ fn main() {
                 }
                 let (seed_bytes, valid) = mnemonic::validate_mnemonic(&test_mnemonic);
                 if valid {
-                        let p_key_bytes: [u8, 32] = mnemonic::get_private_key(&seed_bytes);
-                        let pub_key_bytes: [u8, 32] = mnemonic::get_public_key(&p_key_bytes);
+                        let p_key_bytes: [u8; 32] = mnemonic::get_private_key(&seed_bytes);
+                        let pub_key_bytes: [u8; 32] = mnemonic::get_public_key(&p_key_bytes);
                         let addr: String = mnemonic::get_address(&pub_key_bytes);
                         println!("{}", addr);
                 }
@@ -70,7 +70,7 @@ impl<'a> Config<'a> {
                 
                         Ok(Config { user_mnemonic })
                 } else {
-                        return Err("");
+                        return Err("Usage: brute mnemonic - whereby mnemonic is made up of 24 elements: known words from the BIP39 set, a subgroup of BIP39 words which may be the valid word at that position separated by a comma (e.g. abandon,zoo,frequent), or an X to signify a complete unknown.");
                 }
         }
 }
