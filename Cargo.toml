@@ -8,9 +8,16 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-itertools = "0.8.2"
+tokio = { version = "1.15.0", features = ["full"] }
+ed25519-dalek = { version = "1.0.1", package = "ed25519-dalek-blake2-feeless" }
+reqwest = "0.11.9"
+serde_json = "1.0.74"
+futures = "0.3.19"
 sha2 = "0.10.1"
 blake2 = "0.10.2"
-ed25519-dalek = "1.0.1"
 data-encoding = "2.3.2"
 data-encoding-macro = "0.1.12"
+itertools = "0.8.2"
+hex = "0.4.3"
+toml = "0.5.8"
+colour = "0.6.0"
