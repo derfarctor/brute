@@ -2,7 +2,7 @@ pub mod mnemonic {
         use sha2::{Sha256, Digest};
         use blake2::Blake2bVar;
         use blake2::digest::{Update, VariableOutput};
-        use ed25519_dalek;
+        use ed25519_dalek::{PublicKey, SecretKey};
 
         use data_encoding::Encoding;
         use data_encoding_macro::new_encoding;
@@ -12,9 +12,9 @@ pub mod mnemonic {
                 check_trailing_bits: false,
         };
 
-        pub fn is_valid_broken_mnemonic(mnemonic: &[&str; 24]) -> bool {
+        pub fn is_valid_broken_mnemonic(words: &[&str; 24]) -> bool {
                 for i in 0..24 {
-                        let word = mnemonic[i];
+                        let word = words[i];
                         if !WORD_LIST.contains(&word) && "X" != word {
                                 if word.contains(",") {
                                         let sub_words = word.split(",");
@@ -33,7 +33,17 @@ pub mod mnemonic {
                 true
         }
 
-        pub fn get_info(mnemonic: &[&str; 24]) -> (Vec<Vec<u16>>, Vec<usize>, u64) {
+        pub fn get_test_mnemonic(broken_mnemonic: &[&str; 24]) -> [u16; 24] {
+                let mut test_mnemonic: [u16; 24] = [0u16; 24];
+                for i in 0..24 {
+                        if WORD_LIST.contains(&broken_mnemonic[i]) {
+                                test_mnemonic[i] = wordlist_position(&broken_mnemonic[i]);
+                        }
+                }
+                test_mnemonic
+        }
+
+        pub fn get_info(broken_mnemonic: &[&str; 24]) -> (Vec<Vec<u16>>, Vec<usize>, u64) {
                 let mut possibilities: Vec<Vec<u16>> = vec![];
                 let mut unknown_indexes: Vec<usize> = vec![];
                 let mut complexity: u64;
@@ -41,7 +51,7 @@ pub mod mnemonic {
                 let mut total_unknowns = 0;
 
                 for i in 0..24 {
-                        let part = mnemonic[i];
+                        let part = broken_mnemonic[i];
                         if !WORD_LIST.contains(&part) {
                                 unknown_indexes.push(i);
                                 let mut sub_indexes: Vec<u16> = vec![];
@@ -78,7 +88,7 @@ pub mod mnemonic {
                 index as u16
         }
 
-        pub fn validate_mnemonic(mnemonic: &[u16; 24]) -> ([u8; 33], bool) {
+        pub fn validate_mnemonic(mnemonic: &[u16; 24]) -> ([u8; 32], bool) {
 		let mut bits = [false; 24 * 11];
 		for i in 0..24 {
 			for j in 0..11 {
@@ -86,7 +96,7 @@ pub mod mnemonic {
 			}
 		}
 
-		let mut entropy = [0u8; 33];
+		let mut entropy = [0u8; 32];
 		for i in 0..32 {
 			for j in 0..8 {
 				if bits[i * 8 + j] {
@@ -107,17 +117,19 @@ pub mod mnemonic {
 		(entropy, true)
 	}
 
-        pub fn get_private_key(seed_bytes: &[u8; 33]) -> [u8; 32] {
+        pub fn get_private_key(seed_bytes: &[u8; 32]) -> [u8; 32] {
+                let idx = [0u8; 4];
                 let mut hasher = Blake2bVar::new(32).unwrap();
                 let mut buf = [0u8; 32];
                 hasher.update(seed_bytes);
+                hasher.update(&idx);
                 hasher.finalize_variable(&mut buf).unwrap();
                 buf
         }
 
-        pub fn get_public_key(p_key_bytes: &[u8]) -> [u8; 32] {
-                let dalek = ed25519_dalek::SecretKey::from_bytes(&p_key_bytes).unwrap();
-                let pub_bytes = ed25519_dalek::PublicKey::from(&dalek);
+        pub fn get_public_key(priv_key_bytes: &[u8]) -> [u8; 32] {
+                let dalek = SecretKey::from_bytes(&priv_key_bytes).unwrap();
+                let pub_bytes = PublicKey::from(&dalek);
                 *pub_bytes.as_bytes()
         }
 
