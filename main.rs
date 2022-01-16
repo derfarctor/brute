@@ -19,8 +19,8 @@ use crate::utils::mnemonic;
 type Terminator = Arc<Mutex<bool>>;
 type KeysTested = Arc<AtomicUsize>;
 
-const BATCH_SIZE: usize = 4;
-const NODE_URL: &str = "https://api.nanos.cc/";
+const BATCH_SIZE: usize = 10000;
+const NODE_URL: &str = "https://app.natrium.io/api";
 //const NODE_URL: &str = "https://kaliumapi.appditto.com/api";
 
 struct Account {
@@ -62,17 +62,17 @@ async fn brute(broken_mnemonic: [&str; 24], stop_at_first: bool) {
         
         let log_attempts = attempts_base.clone();
         
+             
         let logger = thread::spawn(move || {
                 threaded_logger(log_attempts, complexity);
         });
-        
         /*
+   
         let logger = tokio::spawn(async move {
                 async_logger(log_attempts, complexity).await;
         });
         */
 
-        let mut last = Instant::now();
         for comb in test_generator {
                 attempts_base.fetch_add(1, atomic::Ordering::Relaxed);
                 for i in 0..unknown_indexes.len() {
@@ -121,9 +121,9 @@ async fn brute(broken_mnemonic: [&str; 24], stop_at_first: bool) {
                 }
         }
         if found_one {
-                println!("Found opened account(s). Check brutelog.txt for more info.");
+                println!("\nFound opened account(s). Check brutelog.txt for more info.");
         } else {
-                println!("Did not find any opened account(s).");
+                println!("\nDid not find any opened account(s).");
         }
         let mut end = terminator.lock().unwrap();
         *end = true;
@@ -131,32 +131,20 @@ async fn brute(broken_mnemonic: [&str; 24], stop_at_first: bool) {
 
 fn threaded_logger(log_attempts: KeysTested, complexity: u64) {
         let mut last = 0;
-        let start = Instant::now();
         loop {
                 thread::sleep_ms(1000);
                 let attempts = log_attempts.load(atomic::Ordering::Relaxed);
-                /*
-                e_green!("\r{} ", attempts);
-                eprint!("of ");
-                e_green!("{} ", complexity);
-                eprint!("mnemonics tested (");
-                e_green!("{:.2}%", 100.*(attempts as f64/complexity as f64));
-                eprint!(") Rate: ");
-                e_green!("{} ", attempts-last);
-                eprint!("per second");
-                */
-                e_green!("\r{:.2}% Complete | {} mnemonics per second", 100.*(attempts as f64/complexity as f64), attempts as f64 / (start.elapsed().as_millis() as f64 / 1000f64));
+                e_green!("\r{:.2}% Complete | {} mnemonics per second", 100.*(attempts as f64/complexity as f64), attempts-last);
                 last = attempts;
         }
 }
 
 async fn async_logger(log_attempts: KeysTested, complexity: u64) {
         let mut last = 0;
-        let start = Instant::now();
         loop {
                 sleep(Duration::from_millis(1000)).await;
                 let attempts = log_attempts.load(atomic::Ordering::Relaxed);
-                e_green!("\r{:.2}% Complete | {} mnemonics per second", 100.*(attempts as f64/complexity as f64), attempts as f64 / (start.elapsed().as_millis() as f64 / 1000f64));
+                e_green!("\r{:.2}% Complete | {} mnemonics per second", 100.*(attempts as f64/complexity as f64), attempts-last);
                 last = attempts;
         }
 }
@@ -196,20 +184,22 @@ async fn get_opened(address_batch: Vec<String>, stop_at_first: &bool) -> (bool, 
             });
 
         let body = body_json.to_string();
-        println!("{}", body);
+
         let client = reqwest::Client::new();
         let res = client.post(NODE_URL)
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/json")
         .body(body)
         .send()
         .await
         .unwrap();
 
         let text = res.text().await.unwrap();
-        println!("{}", text);
+
         let json_res: Value = serde_json::from_str(&text).unwrap();
 
         let accounts_balances = json_res["balances"].as_object().unwrap_or_else( || {
-                        panic!("Problem with RPC Node... {} \nIf this problem persists, please consider changing the RPC Node url in config.", text);
+                        panic!("Problem with RPC Node... {} \nIf this problem persists, please consider changing the RPC Node url in config. You may have hit a rate limit.", text);
         });
 
         let mut opened_accounts: Vec<String> = vec![]; 
