@@ -26,6 +26,7 @@ I then ran the brute program to crack my mnemonic.
 ## Urgent
 - [ ] Error handling - standardise
 - [ ] Output standardise and wait upon ending
+- [ ] Implement node rpc cooldown and queuing
 - [x] Config parsing
 - [ ] Multi threaded cpu calculation
 - [x] Split into modules and separate files
