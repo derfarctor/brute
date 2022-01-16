@@ -24,8 +24,8 @@ mnemonic = "X X buzz,jazz,quiz beach note much angry bread success carbon recall
 I then ran the brute program to crack my mnemonic.
 
 ## Urgent
-- [ ] Error handling - standardise
-- [ ] Output standardise and wait upon ending
+- [x] Error handling - standardise
+- [x] Output standardise and wait upon ending
 - [ ] Implement node rpc cooldown and queuing
 - [x] Config parsing
 - [ ] Multi threaded cpu calculation
