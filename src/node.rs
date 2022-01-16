@@ -21,7 +21,7 @@ pub async fn get_opened(node_url: &str, address_batch: Vec<String>, stop_at_firs
 
         let json_res: Value = serde_json::from_str(&text)?;
 
-        let accounts_balances = json_res["balances"].as_object().ok_or(format!("The node's response was not an accounts_balances object: {}", text))?;
+        let accounts_balances = json_res["balances"].as_object().ok_or(text)?;
 
         let mut opened_accounts: Vec<String> = vec![]; 
 

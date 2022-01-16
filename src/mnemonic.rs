@@ -2,6 +2,7 @@ use sha2::{Sha256, Digest};
 use blake2::Blake2bVar;
 use blake2::digest::{Update, VariableOutput};
 use ed25519_dalek::{PublicKey, SecretKey};
+use colour::{e_red_ln};
 
 use data_encoding::Encoding;
 use data_encoding_macro::new_encoding;
@@ -11,6 +12,10 @@ const ADDR_ENCODING: Encoding = new_encoding! {
         check_trailing_bits: false,
 };
 
+pub struct AddressGenerator {
+        pub prefix: String,
+}
+
 pub fn is_valid_broken_mnemonic(words: &[&str; 24]) -> bool {
         for i in 0..24 {
                 let word = words[i];
@@ -19,12 +24,12 @@ pub fn is_valid_broken_mnemonic(words: &[&str; 24]) -> bool {
                                 let sub_words = word.split(",");
                                 for sub_word in sub_words {
                                         if !WORD_LIST.contains(&sub_word) {
-                                                println!("Error: the supplied mnemonic's optional word at index {} ({}) is not a valid BIP39 word.", i.to_string(), sub_word);
+                                                e_red_ln!("Error: the supplied mnemonic's optional word at index {} ({}) is not a valid BIP39 word.", i.to_string(), sub_word);
                                                 return false;
                                         }
                                 }
                         } else {
-                                println!("Error: the word at index {} ({}) is not a valid BIP39 word, and isn't an X to signify an unknown.", i.to_string(), word);
+                                e_red_ln!("Error: the word at index {} ({}) is not a valid BIP39 word, and isn't an X to signify an unknown.", i.to_string(), word);
                                 return false;
                         }
                 }
@@ -117,11 +122,13 @@ pub fn validate_mnemonic(mnemonic: &[u16; 24]) -> ([u8; 32], bool) {
 }
 
 pub fn get_private_key(seed_bytes: &[u8; 32]) -> [u8; 32] {
-        let idx = [0u8; 4];
+        //let mut seed = seed_bytes.to_vec();
+        //seed.append(&mut idx);
         let mut hasher = Blake2bVar::new(32).unwrap();
         let mut buf = [0u8; 32];
+        //hasher.update(&seed[..]);
         hasher.update(seed_bytes);
-        hasher.update(&idx);
+        hasher.update(&[0u8; 4]);
         hasher.finalize_variable(&mut buf).unwrap();
         buf
 }
@@ -132,20 +139,23 @@ pub fn get_public_key(priv_key_bytes: &[u8]) -> [u8; 32] {
         *pub_bytes.as_bytes()
 }
 
-pub fn get_address(pub_key_bytes: &[u8; 32]) -> String {
-        let mut pub_key_vec = pub_key_bytes.to_vec();
-        let mut h = [0u8; 3].to_vec();
-        h.append(&mut pub_key_vec);
-        let checksum = ADDR_ENCODING.encode(&compute_address_checksum(pub_key_bytes));
-        let address = {
-                let encoded_addr = ADDR_ENCODING.encode(&h);
-                let mut addr = String::from("nano_");
-                addr.push_str(encoded_addr.get(4..).unwrap());
-                addr.push_str(&checksum);
-                addr
-        };
-        address
+impl AddressGenerator {
+        pub fn get_address(&self, pub_key_bytes: &[u8; 32]) -> String {
+                let mut pub_key_vec = pub_key_bytes.to_vec();
+                let mut h = [0u8; 3].to_vec();
+                h.append(&mut pub_key_vec);
+                let checksum = ADDR_ENCODING.encode(&compute_address_checksum(pub_key_bytes));
+                let address = {
+                        let encoded_addr = ADDR_ENCODING.encode(&h);
+                        let mut addr = self.prefix.clone();
+                        addr.push_str(encoded_addr.get(4..).unwrap());
+                        addr.push_str(&checksum);
+                        addr
+                };
+                address
+        }
 }
+
 
 fn compute_address_checksum(pub_key_bytes: &[u8]) -> [u8; 5] {
         let mut hasher = Blake2bVar::new(5).unwrap();
