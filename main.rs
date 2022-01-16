@@ -1,18 +1,17 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 use std::thread;
-use std::time::Instant;
 use std::env;
 use std::process;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic;
 use std::sync::atomic::AtomicUsize;
-use tokio::time::{sleep, Duration};
+use tokio::time::{sleep, Duration, Instant};
 use itertools::Itertools;
 use serde_json::{Value, json};
 use toml;
-use colour::{e_cyan, e_green};
-
+use colour::{e_cyan, e_green, e_red_ln};
+use std::error::Error;
 mod utils;
 use crate::utils::mnemonic;
 
@@ -20,7 +19,8 @@ type Terminator = Arc<Mutex<bool>>;
 type KeysTested = Arc<AtomicUsize>;
 
 const BATCH_SIZE: usize = 10000;
-const NODE_URL: &str = "https://app.natrium.io/api";
+//const NODE_URL: &str = "https://app.natrium.io/api";
+const NODE_URL: &str = "https://www.bitrequest.app:8020/?";
 //const NODE_URL: &str = "https://kaliumapi.appditto.com/api";
 
 struct Account {
@@ -60,18 +60,20 @@ async fn brute(broken_mnemonic: [&str; 24], stop_at_first: bool) {
 
         let attempts_base = Arc::new(AtomicUsize::new(0));
         
+
         let log_attempts = attempts_base.clone();
-        
-             
+        let terminated = terminator.clone();
+
+      
         let logger = thread::spawn(move || {
-                threaded_logger(log_attempts, complexity);
+                threaded_logger(log_attempts, terminated, complexity);
         });
-        /*
-   
+      
+      /*
         let logger = tokio::spawn(async move {
-                async_logger(log_attempts, complexity).await;
+                async_logger(log_attempts, terminated, complexity).await;
         });
-        */
+         */
 
         for comb in test_generator {
                 attempts_base.fetch_add(1, atomic::Ordering::Relaxed);
@@ -87,7 +89,7 @@ async fn brute(broken_mnemonic: [&str; 24], stop_at_first: bool) {
                         batch_accounts.push(account);
                         if batch_accounts.len() == BATCH_SIZE {
                                 if *terminator.lock().unwrap() {
-                                        println!("A spawned async process found account, finishing quietly...");
+                                        println!("Time to kill process, first clean up threads and processes");
                                         process::exit(0);
                                 } else {
                                         let terminator = terminator.clone();
@@ -121,30 +123,33 @@ async fn brute(broken_mnemonic: [&str; 24], stop_at_first: bool) {
                 }
         }
         if found_one {
-                println!("\nFound opened account(s). Check brutelog.txt for more info.");
+                println!("Found opened account(s). Check brutelog.txt for more info.");
         } else {
                 println!("\nDid not find any opened account(s).");
         }
-        let mut end = terminator.lock().unwrap();
-        *end = true;
+        thread::sleep(Duration::from_millis(4000));
+        *terminator.lock().unwrap() = true;
+        let _ = logger.join();
+        //let _ = logger.await;
+        println!("Logger resolved");
+        println!("Ended");
 }
 
-fn threaded_logger(log_attempts: KeysTested, complexity: u64) {
+// Implement break upon terminator set to true for both loggers
+fn threaded_logger(log_attempts: KeysTested, terminated: Terminator, complexity: u64) {
         let mut last = 0;
+        let mut last_log_length: usize = 0;
         loop {
-                thread::sleep_ms(1000);
+                thread::sleep(Duration::from_millis(1000));
+                if  *terminated.lock().unwrap() {
+                        println!("Terminate recieved, ending logging process...");
+                        break;
+                }
+                eprint!("{}", format!("\r{:>width$}", "", width=last_log_length));
                 let attempts = log_attempts.load(atomic::Ordering::Relaxed);
-                e_green!("\r{:.2}% Complete | {} mnemonics per second", 100.*(attempts as f64/complexity as f64), attempts-last);
-                last = attempts;
-        }
-}
-
-async fn async_logger(log_attempts: KeysTested, complexity: u64) {
-        let mut last = 0;
-        loop {
-                sleep(Duration::from_millis(1000)).await;
-                let attempts = log_attempts.load(atomic::Ordering::Relaxed);
-                e_green!("\r{:.2}% Complete | {} mnemonics per second", 100.*(attempts as f64/complexity as f64), attempts-last);
+                let log_msg = format!("\r{:.2}% done | {} mnemonics per second", 100.*(attempts as f64/complexity as f64), attempts-last);
+                e_green!("{}", log_msg);
+                last_log_length = log_msg.chars().count();
                 last = attempts;
         }
 }
@@ -161,23 +166,44 @@ fn handle_args(args: &[String]) -> ([&str; 24], bool) {
 
 async fn process(batch: Vec<Account>, stop_at_first: &bool, terminator: Terminator) -> bool {
         let mut address_batch: Vec<String> = vec![];
-        for account in batch {
+        for account in &batch {
                 address_batch.push(account.address.clone());
         }
-        let (found_account, account_addresses) = get_opened(address_batch, stop_at_first).await;
+        let (found_account, account_addresses) = get_opened(address_batch, stop_at_first).await.unwrap_or_else(|error| {
+                let mut update_found = terminator.lock().unwrap();
+                *update_found = true;
+                e_red_ln!("\nError in node request: {}", error);
+                (false, vec![])
+        });
+        
         if found_account {
-                
-                println!("Found opened accounts. DATA: {:?}", account_addresses);
+                // PROPERLY DISPLAY ACCOUNTS. If stop at first, just find single instance
+                // else, make vec for account objects, then print all info OR WRITE TO FILE. Maybe add \n to avoid deletion by logger
                 if *stop_at_first {
                         let mut update_found = terminator.lock().unwrap();
                         *update_found = true;
+                        for account in &batch {
+                                if account.address == account_addresses[0] {
+                                        println!("\nAddress: {}", account_addresses[0]);
+                                        println!("Seed: {}", hex::encode(account.seed_bytes));
+                                }
+                        }
+                } else {
+                        for account in &batch {
+                                for account_address in &account_addresses {
+                                        if &account.address == account_address {
+                                                println!("\nAddress: {}", account_address);
+                                                println!("Seed: {}", hex::encode(account.seed_bytes));
+                                        }
+                                }
+                        }
                 }
                 return true;
         }
         false
 }
 
-async fn get_opened(address_batch: Vec<String>, stop_at_first: &bool) -> (bool, Vec<String>) {
+async fn get_opened(address_batch: Vec<String>, stop_at_first: &bool) -> Result<(bool, Vec<String>), Box<dyn Error>> {
         let body_json = json!({
                 "action":"accounts_balances",
                 "accounts": address_batch
@@ -191,16 +217,13 @@ async fn get_opened(address_batch: Vec<String>, stop_at_first: &bool) -> (bool, 
         .header("Accept", "application/json")
         .body(body)
         .send()
-        .await
-        .unwrap();
+        .await?;
 
-        let text = res.text().await.unwrap();
+        let text = res.text().await?;
 
-        let json_res: Value = serde_json::from_str(&text).unwrap();
+        let json_res: Value = serde_json::from_str(&text)?;
 
-        let accounts_balances = json_res["balances"].as_object().unwrap_or_else( || {
-                        panic!("Problem with RPC Node... {} \nIf this problem persists, please consider changing the RPC Node url in config. You may have hit a rate limit.", text);
-        });
+        let accounts_balances = json_res["balances"].as_object().ok_or(format!("the node's response was not an accounts_balances object: {}", text))?;
 
         let mut opened_accounts: Vec<String> = vec![]; 
 
@@ -208,14 +231,31 @@ async fn get_opened(address_batch: Vec<String>, stop_at_first: &bool) -> (bool, 
                 if balance_info["balance"] != "0" || balance_info["pending"] != "0" {
                         opened_accounts.push(account_address.clone());
                         if *stop_at_first {
-                                return (true, opened_accounts);
+                                return Ok((true, opened_accounts));
                         }
                 }
         }
         
         if opened_accounts.len() > 0 {
-                return (true, opened_accounts);
+                return Ok((true, opened_accounts));
         } 
-        (false, opened_accounts)
+        Ok((false, opened_accounts))
 }
 
+async fn async_logger(log_attempts: KeysTested, terminated: Terminator, complexity: u64) {
+        let mut last = 0;
+        let mut last_log_length: usize = 0;
+        loop {
+                sleep(Duration::from_millis(1000)).await;
+                if  *terminated.lock().unwrap() {
+                        println!("Terminate recieved, ending logging process...");
+                        break;
+                }
+                eprint!("{}", format!("\r{:>width$}", "", width=last_log_length));
+                let attempts = log_attempts.load(atomic::Ordering::Relaxed);
+                let log_msg = format!("\r{:.2}% done | {} mnemonics per second", 100.*(attempts as f64/complexity as f64), attempts-last);
+                e_green!("{}", log_msg);
+                last_log_length = log_msg.chars().count();
+                last = attempts;
+        }
+}
