@@ -22,12 +22,13 @@ brute X X quiz,jazz,buzz modify offer van door kangaroo hope drop ice ghost vend
 ```
 
 ## To-Do
-- [ ] Make nano rpc requests work
+- [ ] Report found accounts properly within func process
 - [ ] Multi-threaded cpu mnemonic to addr generation
-- [ ] GPU support for blake and sha hashes - may not be necessary if nodes cannot keep up with RPC requests...
 - [ ] Error handling upon mnemonic input, as well as in node RPC requests
 - [ ] Proper config structure rework - config and log file
 - [ ] Allow more syntax options such as word prefix or suffix, or 'contains x' - a quick poll of the wordlist can find which apply
+- [ ] GPU support for blake and sha hashes - may not be necessary if nodes cannot keep up with RPC requests...
 - [x] Split main() into sub-routines
 - [x] Send node accounts_balances with a balanced number of accounts and check which contains balance (if any)
+- [x] Make nano rpc requests work
 - [ ] Get code reviewed by someone who has written more than one rust program
