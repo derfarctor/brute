@@ -50,6 +50,7 @@ I then ran the brute program to crack my mnemonic.
 
 ## To-Do
 - [ ] Allow more syntax options such as word prefix or suffix, or 'contains x' - a quick poll of the wordlist can find which apply
+- [ ] When the 24th word is unknown, reduce pointless computations by only calculating the checksum once.
 - [ ] GPU support for blake and sha hashes - may not be necessary if nodes cannot keep up with RPC requests...
 - [ ] Get code reviewed by someone who has written more than one rust program
 - [x] Split main() into sub-routines
