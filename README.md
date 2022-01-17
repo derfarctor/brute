@@ -25,12 +25,26 @@ mnemonic = "X X buzz,jazz,quiz beach note much angry bread success carbon recall
 ```
 I then ran the brute program to crack my mnemonic.
 
+## Settings in brute_config.toml
+**stop_at_first** - This option can be toggled true/false. Tells brute whether or not to stop searching for opened accounts, once the first opened account has been found.
+
+**stats_logging** - This option can be toggled true/false. Tells brute whether or not to print statistics each second - % remaining and mnemonics per second.
+
+**address_prefix** - This will tell brute the type of address you are looking for. If looking for a nano account, this should remain 'nano_'. If looking for a banano account, this should be set to 'ban_'.
+
+**node_url** - The Node RPC endpoint that you wish to query for account balance checking. This is important, and if possible you should set this to your own node. **brute** makes a lot of requests, and stressing public nodes is not preferable.
+
+**batch_size** - This is the number of accounts per 'accounts_balances' request sent to the node. Too little, and the frequency of requests becomes too large. Too much, and the node will likely reject your request. Change with caution.
+
+**request_cooldown** - Not yet implemented.
+
 ## Urgent
+- [ ] Implement node rpc cooldown and queuing. Currently a good cpu will create too many requests too quickly for most nodes.
+- [ ] Multi threaded cpu calculation
+- [ ] Feature to show balance of account when logging
 - [x] Error handling - standardise
 - [x] Output standardise and wait upon ending
-- [ ] Implement node rpc cooldown and queuing
 - [x] Config parsing
-- [ ] Multi threaded cpu calculation
 - [x] Split into modules and separate files
 - [x] Split into more functions
 
