@@ -78,7 +78,6 @@ pub async fn run(broken_mnemonic: [&str; 24], brute_config: config::Config) {
                         let account: Account = Account { address, seed_bytes };
                         batch_accounts.push(account);
                         if batch_accounts.len() == batch_size {
-                                e_grey_ln!("\nSENDING BATCH");
                                 if *terminator.lock().unwrap() {
                                         let runtime = start_time.elapsed();
                                         let time_bruting = runtime.as_secs() as f64 + runtime.subsec_millis() as f64 / 1000.0;
