@@ -9,12 +9,14 @@ It is a mnemonic brute forcing tool which can be used to recover an account from
 - completely unknown. You don't know any of the words to the mnemonic, but you really want the nano at an address. Just kidding.
 
 ## Usage and example
-To run brute, first download the latest release from the releases page or compile it yourself. Enter the directory containing brute, and run the program. 
+To run brute, first download the latest release from the releases page or compile it yourself. Enter the directory containing brute. If on windows, double click on the supplied `run_brute.bat`. 
 
 Upon the first run, a new config file `brute_config.toml` will be created, with some default settings. To start, open this file in a text editor and paste your mnemonic into the double quotes on the line `mnemonic = ""`. A mnemonic should be in the form of 24 elements separated with a space. Each element can be one of the following:
 - A word from the bip39 word list.
 - A selection of words from the bip39 word list, separated by commas, that represent the possible options of the word at that position in the mnemonic.
 - An X to symbolise a completely unknown word.
+
+Once your mnemonic has been added to the config file, run `run_brute.bat` again.
 
 ### Example
 In this scenario, I came home after work to find my dog had got hungry whilst I was out, and eaten the first two words of my mnemonic which I had left on the table. The third word was also missing most of its letters, but I could make out it ended in a `z`. Looking in the list of the 2048 bip39 words, I could see that it could only have been `buzz`,`jazz` or `quiz`. I opened `brute_config.toml` and set my mnemonic using the appropriate syntax to reflect this:
