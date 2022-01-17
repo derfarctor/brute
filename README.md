@@ -34,7 +34,7 @@ I then ran the brute program to crack my mnemonic.
 
 **node_url** - The Node RPC endpoint that you wish to query for account balance checking. This is important, and if possible you should set this to your own node. **brute** makes a lot of requests, and stressing public nodes is not preferable.
 
-**batch_size** - This is the number of accounts per 'accounts_balances' request sent to the node. Too little, and the frequency of requests becomes too large. Too much, and the node will likely reject your request. Change with caution.
+**batch_size** - This is the number of accounts per 'accounts_balances' request sent to the node. Too little, and the frequency of requests becomes too large. Too much, and the node will likely reject your request. Change with caution. For RPC Proxy enabled nodes, this will need to be lowered from 10,000 to 1,000 in most cases.
 
 **request_cooldown** - Not yet implemented.
 
