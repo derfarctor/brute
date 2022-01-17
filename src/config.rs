@@ -1,4 +1,4 @@
-use std::{fs};
+use std::{fs, process};
 use std::io::ErrorKind;
 use serde::Deserialize;
 use colour::{e_green_ln, e_red_ln};
@@ -34,18 +34,18 @@ pub fn get_config() -> Config {
                         e_green_ln!("Config file not found... creating brute_config.toml with defaults. Please run brute again after you have added your mnemonic to the config file.");
                         fs::write("brute_config.toml", DEFAULT_CONFIG).unwrap_or_else(|error| {
                                 e_red_ln!("There was an issue creating brute_config.toml: {:?}", error);
+                                process::exit(1);
                         });
+                        process::exit(0);
                 } else {
                         e_red_ln!("Error reading brute_config.toml: {:?}", error);
+                        process::exit(1);
                 }
-                super::end_nicely();
-                String::from("")
         });
 
         let config: Config = toml::from_str(config_contents.clone().as_str()).unwrap_or_else(|error| {
                 e_red_ln!("There was an issue parsing brute_config.toml: {:?}", error);
-                super::end_nicely();
-                toml::from_str(DEFAULT_CONFIG).unwrap()
+                process::exit(1);
         });
         config
 }

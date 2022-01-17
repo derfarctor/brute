@@ -1,4 +1,4 @@
-use std::{thread};
+use std::{process, thread};
 use tokio::time::Instant;
 use std::sync::{Arc, Mutex, atomic, atomic::AtomicUsize};
 use itertools::Itertools;
@@ -64,7 +64,7 @@ pub async fn run(broken_mnemonic: [&str; 24], brute_config: config::Config) {
         };
 
         let start_time = Instant::now();
-
+        
         for comb in test_generator {
                 mnemonics_tested.fetch_add(1, atomic::Ordering::Relaxed);
                 for i in 0..unknown_indexes.len() {
@@ -78,6 +78,7 @@ pub async fn run(broken_mnemonic: [&str; 24], brute_config: config::Config) {
                         let account: Account = Account { address, seed_bytes };
                         batch_accounts.push(account);
                         if batch_accounts.len() == batch_size {
+                                e_grey_ln!("\nSENDING BATCH");
                                 if *terminator.lock().unwrap() {
                                         let runtime = start_time.elapsed();
                                         let time_bruting = runtime.as_secs() as f64 + runtime.subsec_millis() as f64 / 1000.0;
@@ -147,13 +148,8 @@ async fn process(batch: Vec<Account>, stop_at_first: &bool, terminator: Terminat
 
         let node_url = node_url.as_str();
         let (found_account, account_addresses) = node::get_opened(node_url, address_batch, stop_at_first).await.unwrap_or_else(|error| {
-                let mut update_found = terminator.lock().unwrap();
-                e_red!("\nError in node request: {}\nEnding remaining processes...", error);
-                if !*update_found {
-                        *update_found = true;   
-                }
-                drop(update_found);
-                (false, vec![])
+                e_red!("\nError in node request: {}", error);
+                process::exit(1);
         });
         
         if found_account {
