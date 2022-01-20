@@ -40,8 +40,8 @@ I then ran the brute program to crack my mnemonic.
 
 ## Urgent
 - [ ] Implement node rpc cooldown and queuing. Currently a good cpu will create too many requests too quickly for most nodes.
+- [ ] New idea: read directly from data.ldb/mdb ledger file rather than requesting via node rpc. Need lots of storage space. In testing with banano ledger in the meantime. Could allow for multithreading and gpu calculation features to actually server a purpose.
 - [ ] Multi threaded cpu calculation
-- [ ] Feature to show balance of account when logging
 - [x] Error handling - standardise
 - [x] Output standardise and wait upon ending
 - [x] Config parsing
