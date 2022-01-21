@@ -6,17 +6,9 @@ use colour::{e_red_ln};
 pub mod mnemonic;
 pub mod node;
 pub mod logger;
-pub mod brute;
+pub mod brute_node;
+pub mod brute_ledger;
 pub mod config;
-
-/*
-SHOULD CONSIDER MAIN THREAD FOR LOGGING AND OTHERS FOR BRUTE SPLIT
-SPLIT BrUTE WORKLOAD TOKIO SPAWN BLOCKING
-COMMUNICATE BETWEEN THREADS
-TRY CHANNELS IF NEEDED
-QUEUE REQUESTS 
-*/
-
 
 #[tokio::main]
 async fn main() {
@@ -40,5 +32,9 @@ async fn main() {
                 process::exit(1);
         }
 
-        brute::run(broken_mnemonic, brute_config).await;
+        if brute_config.ledger.use_ledger {
+                brute_ledger::run(broken_mnemonic, brute_config).await;
+        } else {
+                brute_node::run(broken_mnemonic, brute_config).await;
+        }
 }

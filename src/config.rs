@@ -7,23 +7,47 @@ use toml;
 #[derive(Deserialize)]
 pub struct Config {
         pub mnemonic: String,
-        pub stop_at_first: bool,
-        pub stats_logging: bool,
+        pub settings: Settings,
+        pub ledger: Ledger,
+        pub node: Node
+}
+
+#[derive(Deserialize)]
+pub struct Settings {
         pub address_prefix: String,
+        pub stop_at_first: bool,
+        pub stats_logging: bool
+}
+
+#[derive(Deserialize)]
+pub struct Ledger {
+        pub use_ledger: bool,
+        pub ledger_path: String,
+        pub multithreaded: bool
+}
+
+#[derive(Deserialize)]
+pub struct Node {
         pub node_url: String,
         pub batch_size: usize,
         pub request_cooldown: f64,
 }
 
-const DEFAULT_CONFIG: &str = r#"# Mnemonic
+const DEFAULT_CONFIG: &str = r#"# For a full explanation of each setting, please refer to the README.md
+
 mnemonic = ""
 
-# brute Settings
-stop_at_first = true
+[settings] # General brute settings
+address_prefix = "nano_"
+stop_at_first = true 
 stats_logging = true
 
-# Node Settings
-address_prefix = "nano_"
+[ledger] # Settings used when running brute with a ledger data.ldb file. This is by far the fastest way to use brute.
+use_ledger = false 
+ledger_path = "" 
+multithreaded = true
+
+[node] # Settings used to run brute using a node. This is slow but does not require downloading the ledger database.
 node_url = "https://app.natrium.io/api"
 batch_size = 10000
 request_cooldown = 0.5"#;
