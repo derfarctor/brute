@@ -12,7 +12,7 @@ It is a mnemonic brute forcing tool which can be used to recover an account from
 The brute tool comes in two flavours:
 1. **The ledger version** - This is the high performance, offline version of brute which requires a `data.ldb` file. This is the ledger database of the network you wish to recover an account from. The database snapshot must have been taken after the account you wish to recover was first opened.
 
-2. **The node version** - The default, much slower version of brute, that does not require the downloading of the ledger database. Instead, brute communicates with a node via rpc.
+2. **The node version** - The default, much slower version of brute, that does not require the downloading of the ledger database. Instead, brute communicates with a node via rpc. Due to node limitations, this is restricted to single thread cpu calculations.
 
 ## Usage and example
 To run brute, first download the latest release from the releases page or compile it yourself. Enter the directory containing brute. If on windows, double click on the supplied `run_brute.bat`, otherwise run the brute program.
