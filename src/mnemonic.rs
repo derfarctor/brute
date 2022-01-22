@@ -87,6 +87,31 @@ pub fn get_info(broken_mnemonic: &[&str; 24]) -> (Vec<Vec<u16>>, Vec<usize>, u64
         (possibilities, unknown_indexes, complexity)
 }
 
+pub fn get_split_possibilites(possibilities: Vec<Vec<u16>>, threads: usize) -> Vec<Vec<Vec<u16>>> {
+        // Currently only multithread complete unknowns. 
+        let mut split_possibilites: Vec<Vec<Vec<u16>>> = vec![];
+        for _ in 0..threads {
+                split_possibilites.push(vec![]);
+        }
+        let mut set = false;
+        let denom = 2048 / threads;
+        for i in 0..possibilities.len() {
+                if possibilities[i].len() == 2048usize && !set {
+                        set = true;
+                        for j in 0..threads {
+                                let part: Vec<_> = possibilities[i][j*denom..j*denom+denom].iter().cloned().collect();
+                                split_possibilites[j].push(part);
+                        }
+                } else {
+                        for j in 0..threads {
+                                let part: Vec<_> = possibilities[i].iter().cloned().collect();
+                                split_possibilites[j].push(part);
+                        }
+                }
+        }
+        split_possibilites
+}
+
 pub fn wordlist_position(word: &str) -> u16 {
         let index = WORD_LIST.iter().position(|&w| w == word).unwrap();
         index as u16
