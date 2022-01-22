@@ -9,10 +9,10 @@ It is a mnemonic brute forcing tool which can be used to recover an account from
 - completely unknown. You don't know any of the words to the mnemonic, but you really want the nano at an address. Just kidding.
 
 ## The two flavours of brute
-The brute tool comes in two flavours:
-1. **The ledger version** - This is the high performance, offline version of brute which requires a `data.ldb` file. This is the ledger database of the network you wish to recover an account from. The database snapshot must have been taken after the account you wish to recover was first opened.
+The brute tool can be ran in two different ways:
+1. **Ledger mode** - This is the high performance, offline version of brute which requires a `data.ldb` file. This is the ledger database of the network you wish to recover an account from. The database snapshot must have been taken after the account you wish to recover was first opened.
 
-2. **The node version** - The default, much slower version of brute, that does not require the downloading of the ledger database. Instead, brute communicates with a node via rpc. Due to node limitations, this is restricted to single thread cpu calculations.
+2. **Node mode** - The default, much slower version of brute, that does not require the downloading of the ledger database. Instead, brute communicates with a node via rpc. Due to node limitations, this is restricted to single thread cpu calculations.
 
 ## Usage and example
 To run brute, first download the latest release from the releases page or compile it yourself. Enter the directory containing brute. If on windows, double click on the supplied `run_brute.bat`, otherwise run the brute program.
@@ -22,7 +22,7 @@ Upon the first run, a new config file `brute_config.toml` will be created, with 
 - A selection of words from the bip39 word list, separated by commas, that represent the possible options of the word at that position in the mnemonic.
 - An X to symbolise a completely unknown word.
 
-If you wish to run brute in high performance mode, you must now configure the ledger settings. These are self explanatory but a detailed overview of each setting is available at the bottom of this readme.md as help.
+If you wish to run brute in Ledger mode, you must now configure the ledger settings. These are self explanatory but a detailed overview of each setting is available at the bottom of this readme under the `Options in brute_config.toml` title.
 
 Once your mnemonic has been added to the config file, run brute again - if on windows, via `run_brute.bat` like before.
 
@@ -35,7 +35,7 @@ I then ran the brute program to crack my mnemonic.
 
 ## Options in brute_config.toml
 ### General settings:
-- **address_prefix** - This will tell brute the type of address you are looking for. If looking for a nano account, this should remain 'nano_'. If looking for a banano account, this should be set to 'ban_'. If you are using the ledger version of brute, this is purely cosmetic since the tool checks the ledger for public keys, not addresses.
+- **address_prefix** - This will tell brute the type of address you are looking for. If looking for a nano account, this should remain 'nano_'. If looking for a banano account, this should be set to 'ban_'. If you are using brute in Ledger mode, this is purely cosmetic since the tool checks the ledger for public keys, not addresses.
 
 - **stop_at_first** - This option can be toggled true/false. Tells brute whether or not to stop searching for opened accounts, once the first opened account has been found.
 
@@ -43,11 +43,11 @@ I then ran the brute program to crack my mnemonic.
 
 
 ### Ledger settings:
-- **use_ledger** - This tells brute whether or not you wish to use the high performance ledger version (reading directly from the network ledger). 
+- **use_ledger** - This tells brute whether or not you wish to use the high performance Ledger mode (reading directly from the network ledger). 
 
-- **ledger_path** - If using the ledger version, supply the full path to your `data.ldb` file here.
+- **ledger_path** - If you wish to use the Ledger mode, supply the full path to your `data.ldb` file here.
 
-- **multithreaded** - Work in progress. Currently single threaded.
+- **multithreaded** - This tells brute whether or not to run computations on many threads. This gives a big performance boost but may stress out your CPU to a greater degree. Currently the number of threads is the same as the number of cores.
 
 
 ### Node settings:
@@ -57,21 +57,20 @@ I then ran the brute program to crack my mnemonic.
 
 - **request_cooldown** - Not yet implemented.
 
-## Urgent
-- [ ] Multi threaded cpu calculation
+## To-Do
+- [ ] Add a user defined number of threads setting rather than fixed 1 thread per core
+- [ ] Fix `stop_at_first` so that it actually works in ledger mode.
 - [ ] Implement node rpc cooldown and queuing. Currently a good cpu will create too many requests too quickly for most nodes.
+- [ ] Allow more syntax options such as word prefix or suffix, or 'contains x' - a quick poll of the wordlist can find which apply
+- [ ] When the 24th word is unknown, reduce pointless computations by only calculating the checksum once.
+- [ ] GPU support for blake and sha hashes - may not be necessary if nodes cannot keep up with RPC requests...
+- [x] Multi threaded cpu calculation
 - [x] New idea: read directly from data.ldb/mdb ledger file rather than requesting via node rpc. Need lots of storage space. In testing with banano ledger in the meantime. Could allow for multithreading and gpu calculation features to actually server a purpose.
 - [x] Error handling - standardise
 - [x] Output standardise and wait upon ending
 - [x] Config parsing
 - [x] Split into modules and separate files
 - [x] Split into more functions
-
-## To-Do
-- [ ] Allow more syntax options such as word prefix or suffix, or 'contains x' - a quick poll of the wordlist can find which apply
-- [ ] When the 24th word is unknown, reduce pointless computations by only calculating the checksum once.
-- [ ] GPU support for blake and sha hashes - may not be necessary if nodes cannot keep up with RPC requests...
-- [ ] Get code reviewed by someone who has written more than one rust program
 - [x] Split main() into sub-routines
 - [x] Send node accounts_balances with a balanced number of accounts and check which contains balance (if any)
 - [x] Make nano rpc requests work
