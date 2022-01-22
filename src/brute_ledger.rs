@@ -38,7 +38,7 @@ pub async fn run(broken_mnemonic: [&str; 24], brute_config: config::Config) {
 
         // Update and explanation: LMDB lib feature: if map_size is set below actual db size, it is overwritten to the 
         // current size of the db. Perfectly acceptable for readonly operations as performed by brute.
-        .map_size(db_size);
+        .map_size(4096);
 
         let env = env_builder.open(path).unwrap();
 
