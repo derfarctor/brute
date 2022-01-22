@@ -1,4 +1,4 @@
-use tokio::time::{sleep, Duration};
+use tokio::time::{/*sleep,*/ Duration};
 use std::sync::{Arc, Mutex, atomic, atomic::AtomicUsize};
 use colour::{e_green};
 
@@ -24,6 +24,7 @@ pub fn threaded_logger(log_mnemonics: MnemonicsTested, terminated: Terminator, c
         }
 }
 
+/*
 async fn async_logger(log_mnemonics: MnemonicsTested, terminated: Terminator, complexity: u64) {
         let mut last_tested = 0;
         let mut last_log_length: usize = 0;
@@ -40,3 +41,4 @@ async fn async_logger(log_mnemonics: MnemonicsTested, terminated: Terminator, co
                 }
         }
 }
+*/
