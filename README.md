@@ -59,11 +59,11 @@ I then ran the brute program to crack my mnemonic.
 
 ## To-Do
 - [ ] Add a user defined number of threads setting rather than fixed 1 thread per core
-- [ ] Fix `stop_at_first` so that it actually works in ledger mode.
 - [ ] Implement node rpc cooldown and queuing. Currently a good cpu will create too many requests too quickly for most nodes.
 - [ ] Allow more syntax options such as word prefix or suffix, or 'contains x' - a quick poll of the wordlist can find which apply
 - [ ] When the 24th word is unknown, reduce pointless computations by only calculating the checksum once.
 - [ ] GPU support for blake and sha hashes - may not be necessary if nodes cannot keep up with RPC requests...
+- [x] Fix `stop_at_first` so that it actually works in multithreaded ledger mode.
 - [x] Multi threaded cpu calculation
 - [x] New idea: read directly from data.ldb/mdb ledger file rather than requesting via node rpc. Need lots of storage space. In testing with banano ledger in the meantime. Could allow for multithreading and gpu calculation features to actually server a purpose.
 - [x] Error handling - standardise
