@@ -35,27 +35,27 @@ I then ran the brute program to crack my mnemonic.
 
 ## Options in brute_config.toml
 ### General settings:
-**address_prefix** - This will tell brute the type of address you are looking for. If looking for a nano account, this should remain 'nano_'. If looking for a banano account, this should be set to 'ban_'. If you are using the ledger version of brute, this is purely cosmetic since the tool checks the ledger for public keys, not addresses.
+- **address_prefix** - This will tell brute the type of address you are looking for. If looking for a nano account, this should remain 'nano_'. If looking for a banano account, this should be set to 'ban_'. If you are using the ledger version of brute, this is purely cosmetic since the tool checks the ledger for public keys, not addresses.
 
-**stop_at_first** - This option can be toggled true/false. Tells brute whether or not to stop searching for opened accounts, once the first opened account has been found.
+- **stop_at_first** - This option can be toggled true/false. Tells brute whether or not to stop searching for opened accounts, once the first opened account has been found.
 
-**stats_logging** - This option can be toggled true/false. Tells brute whether or not to print statistics each second - % remaining and mnemonics per second.
+- **stats_logging** - This option can be toggled true/false. Tells brute whether or not to print statistics each second - % remaining and mnemonics per second.
 
 
 ### Ledger settings:
-**use_ledger** - This tells brute whether or not you wish to use the high performance ledger version (reading directly from the network ledger). 
+- **use_ledger** - This tells brute whether or not you wish to use the high performance ledger version (reading directly from the network ledger). 
 
-**ledger_path** - If using the ledger version, supply the full path to your `data.ldb` file here.
+- **ledger_path** - If using the ledger version, supply the full path to your `data.ldb` file here.
 
-**multithreaded** - Work in progress. Currently single threaded.
+- **multithreaded** - Work in progress. Currently single threaded.
 
 
 ### Node settings:
-**node_url** - The Node RPC endpoint that you wish to query for account balance checking. This is important, and if possible you should set this to your own node. **brute** makes a lot of requests, and stressing public nodes is not preferable.
+- **node_url** - The Node RPC endpoint that you wish to query for account balance checking. This is important, and if possible you should set this to your own node. **brute** makes a lot of requests, and stressing public nodes is not preferable.
 
-**batch_size** - This is the number of accounts per 'accounts_balances' request sent to the node. Too little, and the frequency of requests becomes too large. Too much, and the node will likely reject your request. Change with caution. For RPC Proxy enabled nodes, this will need to be lowered from 10,000 to 1,000 in most cases.
+- **batch_size** - This is the number of accounts per 'accounts_balances' request sent to the node. Too little, and the frequency of requests becomes too large. Too much, and the node will likely reject your request. Change with caution. For RPC Proxy enabled nodes, this will need to be lowered from 10,000 to 1,000 in most cases.
 
-**request_cooldown** - Not yet implemented.
+- **request_cooldown** - Not yet implemented.
 
 ## Urgent
 - [ ] Multi threaded cpu calculation
