@@ -37,7 +37,11 @@ pub async fn run(broken_mnemonic: [&str; 24], brute_config: config::Config) {
         // expanding to the default map_size of 128gb. This has only been tested on windows...
 
         // Update and explanation: LMDB lib feature: if map_size is set below actual db size, it is overwritten to the 
-        // current size of the db. Perfectly acceptable for readonly operations as performed by brute.
+        // current size of the db (http://www.lmdb.tech/doc/group__mdb.html#gaa2506ec8dab3d969b0e609cd82e619e5) - within bounds of multiple of page size?. 
+        // Perfectly acceptable for readonly operations as performed by brute.
+
+        // Must be a multiple of system page size. Set to 4096 for now but page size can be pulled from crate if this causes errors on some os.
+        // See https://docs.rs/page_size/latest/page_size/
         .map_size(4096);
 
         let env = env_builder.open(path).unwrap();
@@ -64,7 +68,6 @@ pub async fn run(broken_mnemonic: [&str; 24], brute_config: config::Config) {
 
         let mut tracker = vec![];
 
-        let start_time = Instant::now();
         if brute_config.ledger.multithreaded {
                 // one thread per core for multithreading
                 let mut cpus = num_cpus::get();
@@ -102,7 +105,7 @@ pub async fn run(broken_mnemonic: [&str; 24], brute_config: config::Config) {
                 });
                 tracker.push(new_compute);
         }
-
+        let start_time = Instant::now();
         let mut found = false;
         if brute_config.settings.stop_at_first == true {
                 let mut remaining = tracker;
