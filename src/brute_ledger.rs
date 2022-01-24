@@ -1,7 +1,7 @@
 use std::{thread, fs, process};
 use std::path::Path;
-use std::sync::{Arc, Mutex, atomic, atomic::AtomicUsize};
-use tokio::time::Instant;
+use std::sync::{mpsc, Arc, Mutex, atomic, atomic::AtomicUsize};
+use tokio::time::{Instant, Duration};
 use itertools::Itertools;
 use colour::{e_red_ln, e_cyan_ln, e_grey_ln, e_magenta_ln};
 use heed::{EnvOpenOptions, Database, flags::Flags};
@@ -12,6 +12,19 @@ use crate::logger;
 use crate::config;
 
 type MnemonicsTested = Arc<AtomicUsize>;
+type Terminator = Arc<Mutex<bool>>;
+
+struct ComputeParams {
+        env: heed::Env, 
+        tx: std::sync::mpsc::Sender<bool>,
+        terminated: Terminator,
+        test_mnemonic: [u16; 24], 
+        possibilities: Vec<Vec<u16>>, 
+        unknown_indexes: Vec<usize>, 
+        mnemonics_tested: MnemonicsTested,
+        address_prefix: String, 
+        stop_at_first: bool,
+}
 
 pub async fn run(broken_mnemonic: [&str; 24], brute_config: config::Config) {
         let path = Path::new(&brute_config.ledger.ledger_path);
@@ -54,8 +67,8 @@ pub async fn run(broken_mnemonic: [&str; 24], brute_config: config::Config) {
         let mnemonics_tested = Arc::new(AtomicUsize::new(0));
 
         let log_mnemonics = mnemonics_tested.clone();
-        let terminated = terminator.clone();
 
+        let terminated = terminator.clone();
         let logger = thread::spawn(move || {
                 if brute_config.settings.stats_logging {
                         logger::threaded_logger(log_mnemonics, terminated, complexity);
@@ -81,50 +94,72 @@ pub async fn run(broken_mnemonic: [&str; 24], brute_config: config::Config) {
                 let threads = cpus; 
                 let split_possibilities = mnemonic::get_split_possibilites(possibilities, threads);
                 for i in 0..threads {
-                        let env_handle = env.clone();
-                        let address_prefix = brute_config.settings.address_prefix.clone();
-                        let stop_at_first = brute_config.settings.stop_at_first.clone();
-                        let unknown_indexes_copy = unknown_indexes.clone();
-                        let mnemonics_tested_handle = mnemonics_tested.clone();
-                        let possibilities = split_possibilities[i].clone();
-                        let test_mnemonic: [u16; 24] = mnemonic::get_test_mnemonic(&broken_mnemonic);
-                        let new_compute = tokio::task::spawn_blocking(move || {
-                                return compute(env_handle, test_mnemonic, possibilities, unknown_indexes_copy, mnemonics_tested_handle, address_prefix, stop_at_first);
+
+                        let (tx, rx) = mpsc::channel();
+
+                        let params = ComputeParams {
+                                env: env.clone(),
+                                tx: tx,
+                                terminated: terminator.clone(),
+                                test_mnemonic: mnemonic::get_test_mnemonic(&broken_mnemonic),
+                                possibilities: split_possibilities[i].clone(),
+                                unknown_indexes: unknown_indexes.clone(),
+                                mnemonics_tested: mnemonics_tested.clone(),
+                                address_prefix: brute_config.settings.address_prefix.clone(),
+                                stop_at_first: brute_config.settings.stop_at_first.clone(),
+                        };
+
+                        let new_compute = thread::spawn(move || {
+                                return compute(params);
                         });
-                        tracker.push(new_compute);
+                        tracker.push((rx, new_compute));
                 }
-        } else {        
-                let stop_at_first = brute_config.settings.stop_at_first.clone();
-                let mnemonics_tested_handle = mnemonics_tested.clone();
-                let test_mnemonic: [u16; 24] = mnemonic::get_test_mnemonic(&broken_mnemonic);
-                let new_compute = tokio::task::spawn_blocking(move || {
-                        return compute(env, test_mnemonic, possibilities, unknown_indexes, mnemonics_tested_handle, brute_config.settings.address_prefix, stop_at_first);
+        } else {
+                let (tx, rx) = mpsc::channel();
+                let params = ComputeParams {
+                        env: env,
+                        tx: tx,
+                        terminated: terminator.clone(),
+                        test_mnemonic: mnemonic::get_test_mnemonic(&broken_mnemonic),
+                        possibilities: possibilities,
+                        unknown_indexes: unknown_indexes,
+                        mnemonics_tested: mnemonics_tested.clone(),
+                        address_prefix: brute_config.settings.address_prefix,
+                        stop_at_first: brute_config.settings.stop_at_first.clone(),
+                };
+                let new_compute = thread::spawn(move || {
+                        return compute(params);
                 });
-                tracker.push(new_compute);
+                tracker.push((rx, new_compute));
         }
 
         let mut found = false;
-        if brute_config.settings.stop_at_first == true {
-                let mut remaining = tracker;
-                while remaining.len() != 0 && !found {
-                        let (result, _, new_remaining) = futures::future::select_all(remaining).await;
-                        remaining = new_remaining;
-                        found = result.unwrap();
-                }
-        } else {
-                let results = futures::future::join_all(tracker).await;
-                for result in results {
-                        if result.unwrap() == true {
-                                found = true;
-                                break;
+        
+        'outer: while tracker.len() != 0 {
+                let mut remaining = vec![];
+                for (rx, join_handle) in tracker.into_iter() {
+                        let finishing = rx.try_recv();
+                        if !finishing.is_err() {
+                                found = join_handle.join().unwrap();
+                                if found && brute_config.settings.stop_at_first {
+                                        break 'outer;
+                                }
+                        } else {
+                                println!("{}", finishing.unwrap());
+                                remaining.push((rx, join_handle));
                         }
                 }
+                tracker = remaining;
+                thread::sleep(Duration::from_millis(10));
+        }
+
+        if !found {
+                *terminator.lock().unwrap() = true;
         }
 
         let runtime = start_time.elapsed();
         let time_bruting = runtime.as_secs() as f64 + runtime.subsec_millis() as f64 / 1000.0;
 
-        *terminator.lock().unwrap() = true;
         cleanup(logger, mnemonics_tested, time_bruting, found).await;
 }
 
@@ -144,25 +179,25 @@ async fn cleanup(logger: std::thread::JoinHandle<()>, mnemonics_tested: Mnemonic
         process::exit(0);
 }
 
-fn compute(env: heed::Env, mut test_mnemonic: [u16; 24], possibilities: Vec<Vec<u16>>, unknown_indexes: Vec<usize>, mnemonics_tested: MnemonicsTested, address_prefix: String, stop_at_first: bool) -> bool {
+fn compute(mut params: ComputeParams) -> bool {
 
         let mut found_one = false;
 
-        let test_generator = possibilities.iter().map(|x| x.iter()).multi_cartesian_product();
+        let test_generator = params.possibilities.iter().map(|x| x.iter()).multi_cartesian_product();
         
         let address_generator = mnemonic::AddressGenerator {
-                prefix: address_prefix,
+                prefix: params.address_prefix,
         };
 
-        let db: Database<OwnedType<[u8; 32]>, ByteSlice> = env.create_database(Some("accounts")).unwrap();
-        let rtxn = env.read_txn().unwrap();
+        let db: Database<OwnedType<[u8; 32]>, ByteSlice> = params.env.create_database(Some("accounts")).unwrap();
+        let rtxn = params.env.read_txn().unwrap();
 
         for comb in test_generator {
-                mnemonics_tested.fetch_add(1, atomic::Ordering::Relaxed);
-                for i in 0..unknown_indexes.len() {
-                        test_mnemonic[unknown_indexes[i]] = *comb[i];
+                params.mnemonics_tested.fetch_add(1, atomic::Ordering::Relaxed);
+                for i in 0..params.unknown_indexes.len() {
+                        params.test_mnemonic[params.unknown_indexes[i]] = *comb[i];
                 }
-                let (seed_bytes, valid) = mnemonic::validate_mnemonic(&test_mnemonic);
+                let (seed_bytes, valid) = mnemonic::validate_mnemonic(&params.test_mnemonic);
                 if valid {
                         let priv_key_bytes: [u8; 32] = mnemonic::get_private_key(&seed_bytes);
                         let pub_key_bytes: [u8; 32] = mnemonic::get_public_key(&priv_key_bytes);
@@ -171,7 +206,14 @@ fn compute(env: heed::Env, mut test_mnemonic: [u16; 24], possibilities: Vec<Vec<
                                 let address: String = address_generator.get_address(&pub_key_bytes);
                                 e_magenta_ln!("\n\nAddress: {}", address);
                                 e_magenta_ln!("Seed: {}", hex::encode(seed_bytes));
-                                if stop_at_first {
+                                if params.stop_at_first {
+                                        let mut terminated = params.terminated.lock().unwrap();
+                                        if !*terminated {
+                                                *terminated = true;
+                                                let _ = params.tx.send(true).unwrap_or_else(|error| {
+                                                        e_red_ln!("Worker thread had issue communicating with main thread: {}", error);
+                                                });
+                                        }
                                         return true;
                                 } else {
                                         found_one = true;
@@ -179,5 +221,11 @@ fn compute(env: heed::Env, mut test_mnemonic: [u16; 24], possibilities: Vec<Vec<
                         }
                 }
         }
-        found_one
+        if !*params.terminated.lock().unwrap() {
+                let _ = params.tx.send(true).unwrap_or_else(|error| {
+                        e_red_ln!("Worker thread had issue communicating with main thread: {}", error);
+                });
+        }
+        return found_one;
+
 }
