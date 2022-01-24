@@ -34,7 +34,7 @@ async fn main() {
         }
 
         if brute_config.ledger.use_ledger {
-                brute_ledger::run(broken_mnemonic, brute_config).await;
+                brute_ledger::run(broken_mnemonic, brute_config);
         } else {
                 brute_node::run(broken_mnemonic, brute_config).await;
         }

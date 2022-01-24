@@ -26,7 +26,7 @@ struct ComputeParams {
         stop_at_first: bool,
 }
 
-pub async fn run(broken_mnemonic: [&str; 24], brute_config: config::Config) {
+pub fn run(broken_mnemonic: [&str; 24], brute_config: config::Config) {
         let path = Path::new(&brute_config.ledger.ledger_path);
         let db_file_data = fs::metadata(path).unwrap_or_else(|error| {
                 e_red_ln!("There was an error finding the ledger database file supplied to ledger_path in brute_config.toml: {:?}", error);
@@ -77,7 +77,6 @@ pub async fn run(broken_mnemonic: [&str; 24], brute_config: config::Config) {
 
         let mut tracker = vec![];
 
-        let start_time = Instant::now();
         if brute_config.ledger.multithreaded {
                 // one thread per core for multithreading
                 let mut cpus = num_cpus::get();
@@ -134,7 +133,7 @@ pub async fn run(broken_mnemonic: [&str; 24], brute_config: config::Config) {
         }
 
         let mut found = false;
-        
+        let start_time = Instant::now();
         'outer: while tracker.len() != 0 {
                 let mut remaining = vec![];
                 for (rx, join_handle) in tracker.into_iter() {
@@ -145,12 +144,11 @@ pub async fn run(broken_mnemonic: [&str; 24], brute_config: config::Config) {
                                         break 'outer;
                                 }
                         } else {
-                                println!("{}", finishing.unwrap());
                                 remaining.push((rx, join_handle));
                         }
                 }
                 tracker = remaining;
-                thread::sleep(Duration::from_millis(10));
+                thread::sleep(Duration::from_millis(100));
         }
 
         if !found {
@@ -160,10 +158,10 @@ pub async fn run(broken_mnemonic: [&str; 24], brute_config: config::Config) {
         let runtime = start_time.elapsed();
         let time_bruting = runtime.as_secs() as f64 + runtime.subsec_millis() as f64 / 1000.0;
 
-        cleanup(logger, mnemonics_tested, time_bruting, found).await;
+        cleanup(logger, mnemonics_tested, time_bruting, found);
 }
 
-async fn cleanup(logger: std::thread::JoinHandle<()>, mnemonics_tested: MnemonicsTested, time_bruting: f64, found: bool) {
+fn cleanup(logger: std::thread::JoinHandle<()>, mnemonics_tested: MnemonicsTested, time_bruting: f64, found: bool) {
         let _ = logger.join().unwrap_or_else(|error| {
                 e_red_ln!("Error ending logger thread: {:?}", error);
         });
@@ -203,9 +201,7 @@ fn compute(mut params: ComputeParams) -> bool {
                         let pub_key_bytes: [u8; 32] = mnemonic::get_public_key(&priv_key_bytes);
 
                         if db.get(&rtxn, &pub_key_bytes).unwrap() != None {
-                                let address: String = address_generator.get_address(&pub_key_bytes);
-                                e_magenta_ln!("\n\nAddress: {}", address);
-                                e_magenta_ln!("Seed: {}", hex::encode(seed_bytes));
+                                
                                 if params.stop_at_first {
                                         let mut terminated = params.terminated.lock().unwrap();
                                         if !*terminated {
@@ -214,8 +210,14 @@ fn compute(mut params: ComputeParams) -> bool {
                                                         e_red_ln!("Worker thread had issue communicating with main thread: {}", error);
                                                 });
                                         }
+                                        let address: String = address_generator.get_address(&pub_key_bytes);
+                                        e_magenta_ln!("\n\nAddress: {}", address);
+                                        e_magenta_ln!("Seed: {}", hex::encode(seed_bytes));
                                         return true;
                                 } else {
+                                        let address: String = address_generator.get_address(&pub_key_bytes);
+                                        e_magenta_ln!("\n\nAddress: {}", address);
+                                        e_magenta_ln!("Seed: {}", hex::encode(seed_bytes));
                                         found_one = true;
                                 }
                         }
